@@ -23,6 +23,41 @@ void operateCanny(Mat &srcImg, int thresh, int mult, int kSize) {
 
 
 
+void operateSobel(Mat &srcImg, Mat &xGrad, Mat &yGrad, Mat &grad, int xWeight, int yWeight) {
+/*
+Sobel operator:
+1st apply small blur to remove noises
+*/
+	Mat grad_x, grad_y;
+
+	GaussianBlur(srcImg, srcImg, Size(3, 3), 0, 0, BORDER_DEFAULT);	//applying blur
+	Sobel(srcImg, grad_x, CV_32F, 1, 0);	//derivatives in x direction
+	Sobel(srcImg, grad_y, CV_32F, 0, 1);	//derivative in y direction
+
+
+	double minVal, maxVal;
+	minMaxLoc(grad_x, &minVal, &maxVal);	//find minimum and maximum intensities
+	//Mat xDraw, yDraw;
+	grad_x.convertTo(xGrad, CV_8U, 255.0 / (maxVal - minVal), -minVal * 255.0 / (maxVal - minVal));
+
+	minMaxLoc(grad_y, &minVal, &maxVal);	//find minimum and maximum intensities
+	grad_y.convertTo(yGrad, CV_8U, 255.0 / (maxVal - minVal), -minVal * 255.0 / (maxVal - minVal));
+
+
+	// converting back to CV_8U
+	Mat abs_grad_x, abs_grad_y;
+	convertScaleAbs(grad_x, abs_grad_x);
+	convertScaleAbs(grad_y, abs_grad_y);
+	addWeighted(abs_grad_x, double(xWeight / 100.0), abs_grad_y, (double(yWeight / 100.0)), 0, grad);
+
+	grad_x.release();
+	grad_y.release();
+	abs_grad_x.release();
+	abs_grad_y.release();
+
+}
+
+
 int main(int, char**)
 {
 	// open the default camera, usually it always the laptop's webcam 
@@ -35,40 +70,62 @@ int main(int, char**)
 		return -1;
 	}
 
-	Mat frame, edges;
+	Mat frame, grayImg, tmpGray, cannyEdges, sobelEdges;
 
+	//for canny
 	int lowThreshold = 0;
 	const int max_lowThreshold = 100;
 	int ratio = 3;
 	int kernalSize = 3;
 
+	//for sobel
+	int xWeight = 0, yWeight = 0;
+	int maxWeight = 200;
+
 	//Naming windows
 	const string windowColor = "Raw images from webcam";
 	const string windowCanny = "Feature1: Canny edges";
+	const string windowSobel = "Feature2: Sobel edges";
 
 	//Setting display windows 
 	namedWindow(windowColor, 0);
 	namedWindow(windowCanny, 0);
+	namedWindow(windowSobel, 0);
 
 	//Resizing display window
 	resizeWindow(windowColor, 400, 300);
-	resizeWindow(windowCanny, 400, 300);
+	resizeWindow(windowCanny, 400, 600);
+	resizeWindow(windowSobel, 400, 600);
+
+	//Setting trackber
 	createTrackbar("MinThresh:", windowCanny, &lowThreshold, max_lowThreshold);
+	createTrackbar("X weight:", windowSobel, &xWeight, maxWeight);
+	createTrackbar("Y weight:", windowSobel, &yWeight, maxWeight);
 
 	int key;
 	bool stop = true;
+
+	Mat grad_x, grad_y, grad;
 
 	while(stop)	
 	{	
 		cap >> frame; // get a new frame from camera
 
-		cvtColor(frame, edges, COLOR_BGR2GRAY);	//converting into gray
+		cvtColor(frame, grayImg, COLOR_BGR2GRAY);	//converting into gray
+		cannyEdges = grayImg.clone();
+		tmpGray = grayImg.clone();
 
-		operateCanny(edges, lowThreshold, ratio, kernalSize);
+		operateCanny(cannyEdges, lowThreshold, ratio, kernalSize);		//apply canny
 
-		imshow(windowCanny, edges);
+		operateSobel(tmpGray, grad_x, grad_y, grad, xWeight, yWeight);	//apply sobel
+
+		imshow(windowCanny, cannyEdges);
 		imshow(windowColor, frame);
-		
+		imshow(windowSobel, grad);
+		////See for own interest
+		//imshow("Sobel at X direction", grad_x);
+		//imshow("Sobel at Y direction", grad_y);
+
 		key = waitKey(1);
 		if (key == 'q') {
 			stop = false;
