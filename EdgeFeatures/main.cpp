@@ -5,6 +5,24 @@
 using namespace cv;
 using namespace std;
 
+
+
+void operateCanny(Mat &srcImg, int thresh, int mult, int kSize) {
+	/*
+	Applying canny
+	normally its recommended to blur the image slightly to remove shot noises
+	then apply canny
+	*/
+
+	GaussianBlur(srcImg, srcImg, Size(7, 7), 1.5, 1.5);	//bluring with gaussina
+	Canny(srcImg, srcImg, thresh, thresh * mult, kSize);
+
+	printf("Lower Threshold: %d Upper Threshold: %d\n", thresh, thresh * mult);
+
+}
+
+
+
 int main(int, char**)
 {
 	// open the default camera, usually it always the laptop's webcam 
@@ -21,7 +39,7 @@ int main(int, char**)
 
 	int lowThreshold = 0;
 	const int max_lowThreshold = 100;
-	const int ratio = 3;
+	int ratio = 3;
 	int kernalSize = 3;
 
 	//Naming windows
@@ -38,30 +56,25 @@ int main(int, char**)
 	createTrackbar("MinThresh:", windowCanny, &lowThreshold, max_lowThreshold);
 
 	int key;
+	bool stop = true;
 
-	for (;;)
+	while(stop)	
 	{	
 		cap >> frame; // get a new frame from camera
 
 		cvtColor(frame, edges, COLOR_BGR2GRAY);	//converting into gray
 
-		/*
-		Applying canny
-		normally its recommended to blur the image slightly to remove shot noises
-		then apply canny
-
-		void Canny( InputArray image, OutputArray edges,double threshold1, double threshold2,int apertureSize = 3, bool L2gradient = false );
-		*/
-
-		GaussianBlur(edges, edges, Size(7, 7), 1.5, 1.5);	//bluring with gaussina
-		Canny(edges, edges, lowThreshold, lowThreshold * ratio, kernalSize);
+		operateCanny(edges, lowThreshold, ratio, kernalSize);
 
 		imshow(windowCanny, edges);
 		imshow(windowColor, frame);
 		
 		key = waitKey(1);
-		if ( key == 'q')
+		if (key == 'q') {
+			stop = false;
 			break;
+		}
+			
 	}
 	// the camera will be deinitialized automatically in VideoCapture destructor
 	return 0;
