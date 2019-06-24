@@ -58,6 +58,24 @@ Sobel operator:
 }
 
 
+void operateLaplacian(Mat &srcImg, Mat &outImg, int kernalSize) {
+
+	//Blur the input image first
+	GaussianBlur(srcImg, srcImg, Size(7, 7), 1.5, 1.5, BORDER_DEFAULT);
+
+	//Check kernal size 
+	//it needs to an odd number
+	if (kernalSize % 2 == 0)
+		kernalSize++;
+	printf("Kernal size applied in laplacian is: %d\n", kernalSize);
+
+	Laplacian(srcImg, outImg, CV_16S, kernalSize);
+
+	// converting back to CV_8U
+	convertScaleAbs(outImg, outImg);
+}
+
+
 int main(int, char**)
 {
 	// open the default camera, usually it always the laptop's webcam 
@@ -77,6 +95,8 @@ int main(int, char**)
 	const int max_lowThreshold = 100;
 	int ratio = 3;
 	int kernalSize = 3;
+	int minKSize = 1;
+	int maxKernalSize = 7;
 
 	//for sobel
 	int xWeight = 0, yWeight = 0;
@@ -86,26 +106,33 @@ int main(int, char**)
 	const string windowColor = "Raw images from webcam";
 	const string windowCanny = "Feature1: Canny edges";
 	const string windowSobel = "Feature2: Sobel edges";
+	const string windowLaplacian = "Feature3: Laplacian edges";
 
 	//Setting display windows 
 	namedWindow(windowColor, 0);
 	namedWindow(windowCanny, 0);
 	namedWindow(windowSobel, 0);
+	namedWindow(windowLaplacian, 0);
 
 	//Resizing display window
 	resizeWindow(windowColor, 400, 300);
 	resizeWindow(windowCanny, 400, 600);
 	resizeWindow(windowSobel, 400, 600);
+	resizeWindow(windowLaplacian, 400, 600);
 
 	//Setting trackber
 	createTrackbar("MinThresh:", windowCanny, &lowThreshold, max_lowThreshold);
 	createTrackbar("X weight:", windowSobel, &xWeight, maxWeight);
 	createTrackbar("Y weight:", windowSobel, &yWeight, maxWeight);
+	createTrackbar("kernal Size:", windowLaplacian, &minKSize, maxKernalSize);
 
 	int key;
 	bool stop = true;
 
 	Mat grad_x, grad_y, grad;
+
+	//Laplacian
+	Mat tmpGray1, lapImg;
 
 	while(stop)	
 	{	
@@ -114,14 +141,20 @@ int main(int, char**)
 		cvtColor(frame, grayImg, COLOR_BGR2GRAY);	//converting into gray
 		cannyEdges = grayImg.clone();
 		tmpGray = grayImg.clone();
+		tmpGray1 = grayImg.clone();
 
 		operateCanny(cannyEdges, lowThreshold, ratio, kernalSize);		//apply canny
 
 		operateSobel(tmpGray, grad_x, grad_y, grad, xWeight, yWeight);	//apply sobel
 
+
+		operateLaplacian(tmpGray1, lapImg, minKSize);
+
+
 		imshow(windowCanny, cannyEdges);
 		imshow(windowColor, frame);
 		imshow(windowSobel, grad);
+		imshow(windowLaplacian, lapImg);
 		////See for own interest
 		//imshow("Sobel at X direction", grad_x);
 		//imshow("Sobel at Y direction", grad_y);
